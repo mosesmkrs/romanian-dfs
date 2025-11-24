@@ -1,87 +1,63 @@
-# romania_dfs.py
-# Depth-First Search implementation on the Romanian Map with user input
+# main.py
+# Runs DFS (unweighted) and weighted shortest path (Dijkstra),
+# prints a comparison table, and draws a combined map with both paths.
 
-def build_romania_map():
-    """
-    Returns the standard Romanian map used in AI textbooks.
-    """
-    return {
-        'Arad': ['Zerind', 'Timisoara', 'Sibiu'],
-        'Zerind': ['Arad', 'Oradea'],
-        'Oradea': ['Zerind', 'Sibiu'],
-        'Timisoara': ['Arad', 'Lugoj'],
-        'Lugoj': ['Timisoara', 'Mehadia'],
-        'Mehadia': ['Lugoj', 'Drobeta'],
-        'Drobeta': ['Mehadia', 'Craiova'],
-        'Craiova': ['Drobeta', 'Rimnicu Vilcea', 'Pitesti'],
-        'Sibiu': ['Arad', 'Oradea', 'Fagaras', 'Rimnicu Vilcea'],
-        'Rimnicu Vilcea': ['Sibiu', 'Pitesti', 'Craiova'],
-        'Fagaras': ['Sibiu', 'Bucharest'],
-        'Pitesti': ['Rimnicu Vilcea', 'Craiova', 'Bucharest'],
-        'Bucharest': ['Fagaras', 'Pitesti', 'Giurgiu', 'Urziceni'],
-        'Giurgiu': ['Bucharest'],
-        'Urziceni': ['Bucharest', 'Vaslui', 'Hirsova'],
-        'Hirsova': ['Urziceni', 'Eforie'],
-        'Eforie': ['Hirsova'],
-        'Vaslui': ['Urziceni', 'Iasi'],
-        'Iasi': ['Vaslui', 'Neamt'],
-        'Neamt': ['Iasi']
-    }
+from map_data import load_weighted_graph, weighted_to_unweighted, load_coords
+from algorithms_dfs import dfs
+from algorithms_weighted import dfs_shortest, dijkstra
+from map_plotter import draw_map_and_paths
+from tabulate import tabulate  # pip install tabulate
+import sys
 
+def compare_and_display(start: str, goal: str):
+    # load data
+    weighted = load_weighted_graph()
+    unweighted = weighted_to_unweighted(weighted)
+    coords = load_coords()
 
-def dfs(graph, start, goal, visited=None, path=None):
-    """
-    Recursive Depth-First Search that returns one path from start to goal.
-    This does not guarantee the shortest or best path.
-    """
-    if visited is None:
-        visited = set()
-    if path is None:
-        path = []
+    # Validate
+    if start not in unweighted or goal not in unweighted:
+        print("Invalid start/goal. Please use a city from the map.")
+        return
 
-    visited.add(start)
-    path.append(start)
+    # 1) DFS (unweighted)
+    dfs_path = dfs(unweighted, start, goal)
 
-    if start == goal:
-        return path
+    # 2) Weighted Exhaustive DFS (optional - may be slow)
+    dfs_weighted_result = dfs_shortest(weighted, start, goal)
+    dfs_weighted_path = dfs_weighted_result.get("path")
+    dfs_weighted_cost = dfs_weighted_result.get("cost", float("inf"))
 
-    for neighbor in graph[start]:
-        if neighbor not in visited:
-            result = dfs(graph, neighbor, goal, visited, path)
-            if result is not None:
-                return result
+    # 3) Dijkstra (recommended)
+    dijkstra_path, dijkstra_cost = dijkstra(weighted, start, goal)
 
-    # backtrack
-    path.pop()
-    return None
+    # Prepare comparison table
+    table = [
+        ["Algorithm", "Path", "Total Distance (km)"],
+        ["DFS (unweighted)", " -> ".join(dfs_path) if dfs_path else "No path", "N/A"],
+        ["DFS-weighted (exhaustive)", " -> ".join(dfs_weighted_path) if dfs_weighted_path else "No path", f"{dfs_weighted_cost:.0f}" if dfs_weighted_path else "N/A"],
+        ["Dijkstra (weighted)", " -> ".join(dijkstra_path) if dijkstra_path else "No path", f"{dijkstra_cost:.0f}" if dijkstra_path else "N/A"]
+    ]
+
+    # print table nicely using tabulate (fall back to simple print if tabulate not installed)
+    try:
+        print("\nComparison Results:\n")
+        print(tabulate(table[1:], headers=table[0], tablefmt="github"))
+    except Exception:
+        for row in table:
+            print("\t".join(row))
+
+    # For plotting: show DFS (unweighted path) and Dijkstra path (best weighted).
+    draw_map_and_paths(unweighted, coords, dfs_path=dfs_path, weighted_path=dijkstra_path)
 
 
 def main():
-    graph = build_romania_map()
-    
-    print("Available Cities:")
-    for city in graph.keys():
-        print("-", city)
-    print("\n")
+    print("=== Romania Map — Compare DFS and Shortest Path ===\n")
+    print("This program will run both algorithms and show a comparison.\n")
+    start = input("Enter start city: ").strip()
+    goal = input("Enter goal city: ").strip()
 
-    start_city = input("Enter start city: ").strip()
-    goal_city = input("Enter goal city: ").strip()
-
-    # Input validation
-    if start_city not in graph:
-        print(f"Error: {start_city} is not a valid city.")
-        return
-    if goal_city not in graph:
-        print(f"Error: {goal_city} is not a valid city.")
-        return
-
-    result = dfs(graph, start_city, goal_city)
-
-    if result:
-        print("\nDFS Path from", start_city, "to", goal_city, ":")
-        print(" -> ".join(result))
-    else:
-        print("No path found.")
+    compare_and_display(start, goal)
 
 
 if __name__ == "__main__":
