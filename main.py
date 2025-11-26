@@ -53,6 +53,13 @@ def compare_and_display(start: str, goal: str):
 
 def main():
     print("=== Romania Map — Compare DFS and Shortest Path ===\n")
+        # Print all cities (so the user knows the valid options)
+    weighted = load_weighted_graph()
+    print("Available Cities:")
+    for city in sorted(weighted.keys()):
+        print(" -", city)
+    print()
+
     print("This program will run both algorithms and show a comparison.\n")
     start = input("Enter start city: ").strip()
     goal = input("Enter goal city: ").strip()
